@@ -16,7 +16,7 @@
 #include <signal.h>
 
 #define PORT "3530"  // the port users will be connecting to
-
+#define MAXDATASIZE 1000
 #define BACKLOG 10	 // how many pending connections queue will hold
 
 void sigchld_handler(int s)
@@ -34,6 +34,7 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+char* data = "Input Data\n";
 int main(void)
 {
 	int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
@@ -100,7 +101,7 @@ int main(void)
 
 	printf("server: waiting for connections...\n");
 
-	while(1) {  // main accept() loop
+	while(1) {
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 		if (new_fd == -1) {
@@ -112,15 +113,110 @@ int main(void)
 			get_in_addr((struct sockaddr *)&their_addr),
 			s, sizeof s);
 		printf("server: got connection from %s\n", s);
+		if (!fork()) {
 
-		if (!fork()) { // this is the child process
-			close(sockfd); // child doesn't need the listener
-			if (send(new_fd, "Hello, world!", 13, 0) == -1)
-				perror("send");
-			close(new_fd);
-			exit(0);
+			int in[2], out[2], n, pid;
+			char buf[MAXDATASIZE];
+			char store[255];
+			char input;
+
+			if(pipe(in) < 0) perror("pipe in");
+			if(pipe(out) < 0) perror("pipe out");
+
+			int command = recv(new_fd, store, 255, 0);
+			input = store[0];
+
+			if (input == 'l') {
+				if((pid=fork()) == 0) {
+					close(0);
+					close(1);
+					close(2);
+					dup2(in[0],0);
+					dup2(out[1],1);
+					dup2(out[1],2);
+					close(in[1]);
+					close(out[0]);
+					execl("/usr/bin/ls", "ls", (char *)NULL);
+					perror("Could not exc ls");
+				}
+				close(in[0]);
+				close(out[1]);
+				write(in[1], data, strlen(data));
+				close(in[1]);
+				n = read(out[0], buf, 1000);
+				buf[n] = 0;
+				close(sockfd);
+				send(new_fd, buf, 1000, 0);
+				close(new_fd);
+				exit(0);
+			}
+
+			else if (input == 'p' || input == 'd') {
+
+				char file[255];
+
+				int ifile = recv(new_fd, file, 254, 0);
+				file[ifile] = '\0';
+
+
+				if(fopen(file, "r") != NULL) {
+					send(new_fd, "1", strlen("1"), 0);
+					if((pid=fork()) == 0) {
+
+						close(0);
+						close(1);
+						close(2);
+
+						dup2(in[0],0);
+						dup2(out[1],1);
+						dup2(out[1],2);
+
+						close(in[1]);
+						close(out[0]);
+						execl("/usr/bin/cat", "cat ", file, (char *)NULL);
+						perror("Could not exc cat");
+					}
+
+					close(in[0]);
+					close(out[1]);
+
+					write(in[1], data, strlen(data));
+					close(in[1]);
+
+					n = read(out[0], buf, 1000);
+					buf[n] = 0;
+
+					close(sockfd);
+					send(new_fd, buf, 1000, 0);
+					close(new_fd);
+					exit(0);
+				}
+
+
+				else {
+					send(new_fd, "0", strlen("0"), 0);
+				}
+				close(new_fd);
+
+
+			}
+			else if (input == 'c') {
+				char file[255];
+
+				int ifile = recv(new_fd, file, 254, 0);
+				file[ifile] = '\0';
+
+				if(fopen(file, "r") != NULL) {
+					send(new_fd, "1", strlen("1"), 0);
+				}
+
+				else {
+					send(new_fd, "0", strlen("0"), 0);
+				}
+				close(new_fd);
+			}
 		}
-		close(new_fd);  // parent doesn't need this
+		close(new_fd);  
 	}
 
 	return 0;

@@ -14,9 +14,9 @@
 
 #include <arpa/inet.h>
 
-#define PORT "3506" // the port client will be connecting to 
+#define PORT "3506" // the port client will be connecting to
 
-#define MAXDATASIZE 1000 // max number of bytes we can get at once 
+#define MAXDATASIZE 1000 // max number of bytes we can get at once
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -30,7 +30,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(int argc, char *argv[])
 {
-	int sockfd, numbytes;  
+	int sockfd, numbytes;
 	char buf[MAXDATASIZE];
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	char server_filename[255];
 	int match;
 	char user_input[MAXDATASIZE];
-	
+
 
 	if (argc != 2) {
 	    fprintf(stderr,"usage: client hostname\n");
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 					perror("recv");
 					exit(1);
 				}
-			
+
 				//Array to strring
 				buf[numbytes] = '\0';
 				printf("-----------------------------------------------------------------------\n");
@@ -124,23 +124,23 @@ int main(int argc, char *argv[])
 			case 'c':
 				//Send command to the server
 				send(sockfd, "c", 1, 0);
-				
+
 				//Ask the client for the name
 				printf("Enter the file name: ");
 				scanf("%s", &filename);
 				while(getchar() != '\n'){;}
-				
+
 				//send filename to the server
 				send(sockfd, filename, 254, 0);
-				
+
 				//Receive 1 for found or 0 for not found
 				match = recv(sockfd, server_filename, 254, 0);
-				
+
 				//Turn character awway into string by appending \0 at end
 				server_filename[match] = '\0';
 
 				//If file is not found
-				if(server_filename[0] == '0') {	
+				if(server_filename[0] == '0') {
 					printf("--------------------------------------------------------------");
 					printf("---------\n");
 					printf("File <%s> not found\n", filename);
@@ -155,15 +155,15 @@ int main(int argc, char *argv[])
 					printf("File <%s> exists\n", filename);
 					printf("--------------------------------------------------------------");
 					printf("---------\n");
-				}	
-	
+				}
+
 				break;
 
 			//download
 			case 'd':
 				//Send command to the server
 				send(sockfd, "d", 1, 0);
-				
+
 				//Ask the client for the name
 				printf("Enter the file name: ");
 				scanf("%s", &filename);
@@ -181,10 +181,10 @@ int main(int argc, char *argv[])
 					perror("recv");
 					exit(1);
 				}
-				
+
 				//Receive 1 for found or 0 for not found
 				//match = recv(sockfd, server_filename, 254, 0);
-				
+
 				if(fopen(filename, "r") != NULL) {
 					printf("--------------------------------------------------------------");
 					printf("---------\n");
@@ -197,12 +197,12 @@ int main(int argc, char *argv[])
 					if(overwrite != 'y') break;
 
 					else {
-						//Recieve file 
+						//Recieve file
 						//numbytes = recv(sockfd, buf, MAXDATASIZE, 0);
-					
+
 						FILE *fp;
 						fp = fopen(filename, "w");
-						
+
 						//int inew_file;
 						//char new_file[MAXDATASIZE];
 						//new_file[inew_file] = '\0';
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
 						printf("----------------------------------------------------");
 						printf("-------------------\n");
 					}
-					
+
 				}
 				else {
 					printf("--------------------------------------------------------------");
@@ -225,14 +225,14 @@ int main(int argc, char *argv[])
 					printf("Create a new file? (y/n)\n");
 					char overwrite = getchar();
 					while(getchar() != '\n') {}
-					
+
 					//if no overwrite then break
 					if(overwrite != 'y') break;
 
 					else {
 						FILE *fp;
 						fp = fopen(filename, "w");
-						
+
 						//int inew_file;
 						//char new_file[MAXDATASIZE];
 						//new_file[inew_file] = '\0';
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 						printf("File downloaded\n");
 						printf("----------------------------------------------------");
 						printf("-------------------\n");
-					}	
+					}
 					close(sockfd);
 				}
 
@@ -255,9 +255,9 @@ int main(int argc, char *argv[])
 				//send the command to the server
 				send(sockfd, "p", 1, 0);
 
-				
+
 				//ask the client for the name
-				printf("Please enter file name: ");	
+				printf("Please enter file name: ");
 				scanf("%s", &filename);
 				while(getchar() != '\n'){;}
 
@@ -266,12 +266,12 @@ int main(int argc, char *argv[])
 
 				//Receive 1 for found or 0 for not found
 				match = recv(sockfd, server_filename, 254, 0);
-				
+
 				//Turn character awway into string by appending \0 at end
 				server_filename[match] = '\0';
 
 				//If file is not found
-				if(server_filename[0] == '0') {	
+				if(server_filename[0] == '0') {
 					printf("--------------------------------------------------------------");
 					printf("---------\n");
 					printf("File <%s> not found\n", filename);
@@ -293,8 +293,8 @@ int main(int argc, char *argv[])
 					printf("%s \n", buf);
 					printf("--------------------------------------------------------------");
 					printf("---------\n");
-				}	
-						
+				}
+
 				break;
 
 			//quit
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 		}
 
 	}
-			
+
 }
 /*
 	if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
@@ -327,4 +327,3 @@ int main(int argc, char *argv[])
 	return 0;
 }
 */
-

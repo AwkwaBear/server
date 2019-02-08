@@ -36,6 +36,11 @@ int main(int argc, char *argv[])
 	int rv;
 	char s[INET6_ADDRSTRLEN];
 
+	char command;
+	char filename[255];
+	char server_filename[255];
+	int match;
+	char user_input[MAXDATASIZE];
 	if (argc != 2) {
 	    fprintf(stderr,"usage: client hostname\n");
 	    exit(1);
@@ -44,7 +49,7 @@ int main(int argc, char *argv[])
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-
+while(command != 'q'){
 	if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
@@ -78,16 +83,198 @@ int main(int argc, char *argv[])
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-	    perror("recv");
-	    exit(1);
+	command = getchar();
+	while(getchar() != '\n') {}
+
+	switch(command) {
+
+/*HELP*/
+		case 'h':
+			printf("-----------------------------------------------------------------------\n");
+			printf("l: List contents of the directory of the server\n");
+			printf("c: Check if the server has a file\n");
+			printf("d: Download a file on the server\n");
+			printf("p: Display a file on the server\n");
+			printf("q: Quit\n");
+			printf("-----------------------------------------------------------------------\n");
+			break;
+/*LIST*/
+		case 'l':
+
+			send(sockfd, "l", strlen("l"),  0);
+
+
+			if((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+				perror("recv");
+				exit(1);
+			}
+
+
+			buf[numbytes] = '\0';
+			printf("-----------------------------------------------------------------------\n");
+			printf("%s\n", buf);
+			printf("-----------------------------------------------------------------------\n");
+			break;
+
+/*CHECK*/
+		case 'c':
+			send(sockfd, "c", 1, 0);
+
+			printf("Enter the file name: ");
+			scanf("%s", filename);
+			while(getchar() != '\n'){;}
+
+			send(sockfd, filename, 254, 0);
+
+			match = recv(sockfd, server_filename, 254, 0);
+
+			server_filename[match] = '\0';
+
+			if(server_filename[0] == '0') {
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+				printf("File <%s> not found\n", filename);
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+			}
+
+			else {
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+				printf("File <%s> exists\n", filename);
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+			}
+
+			break;
+
+/*DOWNLOAD*/
+		case 'd':
+			send(sockfd, "d", 1, 0);
+
+			printf("Enter the file name: ");
+			scanf("%s", filename);
+			while(getchar() != '\n'){;}
+			int ifile;
+			char file[255];
+			file[ifile] = '\0';
+			send(sockfd, filename, 254, 0);
+			match = recv(sockfd, server_filename, 254, 0);
+
+			if((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+				perror("recv");
+				exit(1);
+			}
+
+			if(fopen(filename, "r") != NULL) {
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+				printf("File <%s> exists\n", filename);
+				printf("Overwrite file? (y/n)\n");
+				char overwrite = getchar();
+				while(getchar() != '\n') {}
+
+				if(overwrite != 'y') break;
+
+				else {
+
+					FILE *fp;
+					fp = fopen(filename, "w");
+
+
+					fputs(buf, fp);
+					fclose(fp);
+					printf("\n----------------------------------------------------");
+					printf("-------------------\n");
+					printf("File downloaded\n");
+					printf("----------------------------------------------------");
+					printf("-------------------\n");
+				}
+
+			}
+			else {
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+				printf("File <%s> not found\n", filename);
+				printf("Create a new file? (y/n)\n");
+				char overwrite = getchar();
+				while(getchar() != '\n') {}
+
+				if(overwrite != 'y') break;
+
+				else {
+					FILE *fp;
+					fp = fopen(filename, "w");
+
+					fputs(buf, fp);
+					fclose(fp);
+					printf("\n----------------------------------------------------");
+					printf("-------------------\n");
+					printf("File downloaded\n");
+					printf("----------------------------------------------------");
+					printf("-------------------\n");
+				}
+				close(sockfd);
+			}
+
+			break;
+
+/*DISPLAY FILE*/
+		case 'p':
+			send(sockfd, "p", 1, 0);
+
+			printf("Please enter file name: ");
+			scanf("%s", filename);
+			while(getchar() != '\n'){;}
+
+
+			send(sockfd, filename, 254, 0);
+
+
+			match = recv(sockfd, server_filename, 254, 0);
+
+
+			server_filename[match] = '\0';
+
+
+			if(server_filename[0] == '0') {
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+				printf("File <%s> not found\n", filename);
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+			}
+
+
+			else {
+
+				if((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+					perror("recv");
+					exit(1);
+				}
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+				printf("File <%s> exists\n", filename);
+				printf("CONTENT OF THE FILE: \n\n");
+				printf("%s \n", buf);
+				printf("--------------------------------------------------------------");
+				printf("---------\n");
+			}
+
+			break;
+
+/*QUIT*/
+		case 'q':
+			command = 'q';
+			break;
+
+		default:
+			printf("-----------------------------------------------------------------------\n");
+			printf("Not a valid command\n");
+			printf("-----------------------------------------------------------------------\n");
+			break;
 	}
 
-	buf[numbytes] = '\0';
+}
 
-	printf("client: received '%s'\n",buf);
-
-	close(sockfd);
-
-	return 0;
 }
